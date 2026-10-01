@@ -18,7 +18,7 @@
 | Offset | Taille | Champ | Valeur |
 |---|---|---|---|
 | 0 | 4 | `magic` | `"FFS1"` |
-| 4 | 4 | `sequence` | ordre de mise en service, 1, 2, 3… (jamais réutilisé) |
+| 4 | 4 | `sequence` | ordre de mise en service, 1, 2, 3… Un numéro n'est jamais réattribué : un secteur effacé puis remis en service reçoit un **nouveau** numéro (plus grand déjà vu + 1) |
 | 8 | 4 | `reserve` | `FFFFFFFF` |
 | 12 | 4 | `crc32` | CRC des octets 0 à 11 |
 
