@@ -18,12 +18,36 @@ chronologique** à partir de la flash seule.
 
 ### Pourquoi un tel numéro ?
 
-Au démarrage (montage), votre programme n'a **rien en mémoire** : il ne
-connaît que les octets de la flash. Or la **position** d'une donnée sur la
-flash ne dit pas *quand* elle a été écrite. Le secteur 0 n'est pas forcément
-le plus ancien, et un enregistrement placé loin n'est pas forcément le plus
-récent (voir E2 plus bas). La séquence, elle, est écrite **dans** la donnée :
-elle survit à l'extinction.
+Dans cette note, **redémarrage** veut dire redémarrage **de l'appareil**,
+donc du programme, pas de la flash. À l'extinction :
+
+| | Ce qui se passe | Dans le projet |
+|---|---|---|
+| **Flash** | **conservée** : en-têtes, enregistrements, données | l'objet `FlashRam` (ou le fichier image en E3) |
+| **Mémoire du programme** | **perdue** : index des fichiers, secteur actif, compteurs | l'objet `SystemeFichiers` |
+
+Au redémarrage, le programme repart de zéro et reconstruit tout à partir des
+octets de la flash : c'est le **montage**, fait par le constructeur de
+`SystemeFichiers`. Dans les tests, on le simule en détruisant le
+`SystemeFichiers` puis en en créant un nouveau sur la **même** flash :
+c'est le test de remontage exigé.
+
+```cpp
+FlashRam flash(8, 512);           // la puce : elle vit pendant tout le test
+{
+    SystemeFichiers fs(flash);    // l'appareil s'allume (montage)
+    fs.ecrireFichier(...);
+}                                 // fs détruit : l'appareil s'éteint, sa mémoire est perdue
+SystemeFichiers fs2(flash);       // l'appareil se rallume : nouveau montage,
+                                  // fs2 ne sait rien et relit tout depuis la flash
+```
+
+Au montage, votre programme n'a donc **rien en mémoire** : il ne connaît que
+les octets de la flash. Or la **position** d'une donnée sur la flash ne dit
+pas *quand* elle a été écrite. Le secteur 0 n'est pas forcément le plus
+ancien, et un enregistrement placé loin n'est pas forcément le plus récent
+(voir E2 plus bas). La séquence, elle, est écrite **dans** la donnée : elle
+survit à l'extinction.
 
 ### 1.1 `sequence` de l'en-tête de SECTEUR (offset 4 du secteur)
 
@@ -68,7 +92,7 @@ réutilisé : les séquences valent simplement 1, 2, 3… dans l'ordre où les
 secteurs sont ouverts. Le champ sert à retrouver le secteur actif au
 montage, comme dans l'exemple suivant.
 
-#### Exemple dans le socle : le redémarrage
+#### Exemple dans le socle : le redémarrage de l'appareil
 
 Une flash de 4 secteurs, au moment où l'on éteint :
 
