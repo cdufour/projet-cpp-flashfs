@@ -94,7 +94,7 @@ montage, comme dans l'exemple suivant.
 
 #### Exemple dans le socle : le redémarrage de l'appareil
 
-Une flash de 4 secteurs, au moment où l'on éteint :
+Une flash de 4 secteurs, au moment où l'on éteint l'appareil :
 
 ```
 secteur 0 : 46 46 53 31  01 00 00 00  ff ff ff ff  74 ce 0e e3   "FFS1", sequence 1 — plein
