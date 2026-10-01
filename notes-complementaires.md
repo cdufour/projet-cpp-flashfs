@@ -63,10 +63,57 @@ ancien** alors que c'est le **plus récent**. Le secteur 2 serait pris pour
 le secteur actif, et la prochaine récupération viserait le secteur 0, celui
 qu'on vient de remplir.
 
-Dans le **socle** (sans E2), aucun secteur n'est jamais effacé : les
-séquences valent simplement 1, 2, 3… dans l'ordre où les secteurs sont
-ouverts. Le champ sert alors uniquement à retrouver le secteur actif au
-montage.
+Dans le **socle** (sans E2), aucun secteur n'est effacé pour être
+réutilisé : les séquences valent simplement 1, 2, 3… dans l'ordre où les
+secteurs sont ouverts. Le champ sert à retrouver le secteur actif au
+montage, comme dans l'exemple suivant.
+
+#### Exemple dans le socle : le redémarrage
+
+Une flash de 4 secteurs, au moment où l'on éteint :
+
+```
+secteur 0 : 46 46 53 31  01 00 00 00  ff ff ff ff  74 ce 0e e3   "FFS1", sequence 1 — plein
+secteur 1 : 46 46 53 31  02 00 00 00  ff ff ff ff  97 c9 81 6d   "FFS1", sequence 2 — à moitié rempli
+secteur 2 : ff ff ff ff …                                         vierge
+secteur 3 : ff ff ff ff …                                         vierge
+```
+
+Au montage, en lisant l'en-tête de chaque secteur :
+
+1. secteurs 0 et 1 : **utilisés** (signature et CRC corrects), séquences 1
+   et 2 ; secteurs 2 et 3 : **libres** ;
+2. **secteur actif** = le secteur utilisé de plus grande séquence →
+   **secteur 1**. L'écriture reprend à la fin de sa zone écrite ;
+3. `prochaineSeqSecteur_` = 2 + 1 = **3**.
+
+Quand le secteur 1 est plein, `mettreEnService()` prend le premier secteur
+libre (le 2) et y écrit :
+
+```
+secteur 2 : 46 46 53 31  03 00 00 00  ff ff ff ff  09 c9 2b a1   "FFS1", sequence 3
+```
+
+#### Variante : le courant coupe pendant l'écriture de cet en-tête
+
+```
+secteur 2 : 46 46 53 31  03 00 ff ff  ff ff ff ff  ff ff ff ff   en-tête incomplet
+```
+
+Au redémarrage, le CRC du secteur 2 est faux : le secteur est **sale**. Il
+n'est ni libre ni utilisé, et il est ignoré.
+
+- Le secteur actif est toujours le **secteur 1** (séquence 2), et
+  `prochaineSeqSecteur_` vaut 3.
+- À la prochaine mise en service, le premier secteur libre **ou sale** est
+  le 2 : on l'**efface**, puis on y écrit un en-tête complet de séquence 3.
+
+**Le piège.** Chercher le secteur actif comme « le dernier secteur non
+vierge » désignerait ici le secteur 2, dont l'en-tête est illisible. La
+bonne règle est la seule qui marche dans tous les cas : *parmi les secteurs
+dont l'en-tête est valide, celui de plus grande séquence.* C'est aussi elle
+qui restera juste si vous faites l'extension E2, où un secteur effacé puis
+réutilisé peut être le plus récent tout en étant le premier de la flash.
 
 ### 1.2 `sequence` d'un ENREGISTREMENT (offset 4 de l'enregistrement)
 
