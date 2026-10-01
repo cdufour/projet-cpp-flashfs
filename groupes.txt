@@ -1,0 +1,27 @@
+# Projet C++ (01-02/10/2026) : groupes du Projet C, sauf gp3 et gp5 (échange Amine <-> Gibril)
+# URL GitLab à renseigner à la création des dépôts
+
+[gp1]
+yohan
+mohammed
+theo
+
+[gp2]
+orialm
+antoine
+
+[gp3]
+charriere Clement
+gibril
+
+[gp4]
+clement tolsau
+gabriel
+
+[gp5]
+jean charles
+amine
+
+[gp6]
+tanguy
+matthieu
