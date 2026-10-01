@@ -9,6 +9,7 @@ Pour une vue d'ensemble illustrée : [FlashFS en schémas](https://ajc.opusidea.
 ## Sommaire
 
 1. [Le champ `sequence`](#1-le-champ-sequence) (01/10/2026)
+2. [Le montage : collecter, trier, puis rejouer](#2-le-montage--collecter-trier-puis-rejouer) (01/10/2026)
 
 ---
 
@@ -195,3 +196,170 @@ fois, sur assez de données pour remplir 2 ou 3 secteurs, puis construire un
 **nouveau** `SystemeFichiers` sur la même flash. Il doit retrouver
 exactement les dernières versions **et pouvoir continuer à écrire**. Si vos
 séquences sont fausses, c'est ce test qui échoue.
+
+---
+
+## 2. Le montage : collecter, trier, puis rejouer
+
+Une question revient : *« Si je mets l'index à jour au fur et à mesure de la
+lecture, une suppression peut être effacée par une écriture plus ancienne
+lue après elle. Faut-il marquer le fichier supprimé, par exemple avec une
+taille à 0 ? »*
+
+La question est juste : ce problème existe. Mais la solution n'est pas la
+taille à 0. Il faut **changer l'ordre dans lequel on rejoue**.
+
+### 2.1 Le problème : rejouer dans l'ordre de lecture
+
+L'approche naturelle est de tout faire en une seule boucle : pour chaque
+secteur, pour chaque enregistrement valide, mettre à jour `index_` tout de
+suite (FICHIER → ajout, SUPPRESSION → `erase`).
+
+Cela revient à rejouer dans l'**ordre de lecture**, c'est-à-dire l'ordre
+physique sur la flash. Or le format demande de rejouer dans l'**ordre
+chronologique**, donné par la `sequence` (voir la note 1). Les deux ordres
+ne sont pas forcément les mêmes.
+
+**Exemple** (extension E2). Le secteur 0 a été récupéré, effacé, puis remis
+en service : c'est maintenant le secteur **le plus récent**, alors que c'est
+le premier de la flash.
+
+```
+secteur 0 (seq secteur 4, le plus récent)   seq 15  SUPPRESSION a.txt
+secteur 2 (seq secteur 3)                   seq 10  FICHIER     a.txt = "v2"
+```
+
+Chronologiquement : `a.txt` a été écrit (seq 10), puis supprimé (seq 15).
+Il **ne doit plus exister**.
+
+En rejouant dans l'ordre de lecture (secteur 0, puis secteur 2) :
+
+| Lu | Action | `index_` après |
+|---|---|---|
+| seq 15 SUPPRESSION a.txt | `erase("a.txt")` : rien à retirer | vide |
+| seq 10 FICHIER a.txt | `index_["a.txt"] = …` | **a.txt présent** ❌ |
+
+Le fichier supprimé **ressuscite**. Sa suppression a été appliquée avant
+l'écriture qu'elle devait annuler.
+
+> Dans le **socle** (sans E2), les secteurs sont remplis dans l'ordre 0, 1,
+> 2… et ne sont jamais réutilisés : l'ordre de lecture coïncide alors avec
+> l'ordre des séquences, et ce bug **ne se voit pas** dans vos tests. Il
+> apparaît dès qu'un secteur est réutilisé (E2) ou que des enregistrements
+> sont recopiés. Mieux vaut écrire tout de suite la version correcte : elle
+> n'est pas plus longue.
+
+### 2.2 La solution : deux temps
+
+On sépare la **lecture** de la **reconstruction** :
+
+1. **Collecter** : parcourir tous les secteurs et ranger chaque
+   enregistrement valide (nom, type, séquence, adresse, taille) dans un
+   `std::vector`, **sans toucher à l'index**.
+2. **Trier, puis rejouer** : trier ce vecteur par `sequence`, puis le
+   parcourir dans l'ordre et appliquer chaque opération à `index_`.
+
+```cpp
+struct Lu {                     // un enregistrement valide trouvé sur la flash
+    std::string nom;
+    std::uint8_t type;          // 0x01 = FICHIER, 0x02 = SUPPRESSION
+    std::uint32_t sequence;
+    std::size_t adresse;
+    std::uint32_t taille;
+};
+
+std::vector<Lu> lus;
+// 1. Collecter : pour chaque secteur utilisé, pour chaque enregistrement
+//    valide → lus.push_back({...});   (aucune modification de index_ ici)
+
+// 2. Trier par séquence (de la plus ancienne à la plus récente)
+std::stable_sort(lus.begin(), lus.end(),
+                 [](const Lu& a, const Lu& b) { return a.sequence < b.sequence; });
+
+// 3. Rejouer dans l'ordre chronologique : la dernière opération gagne
+for (const Lu& e : lus) {
+    if (e.type == 0x01)         // FICHIER
+        index_[e.nom] = Entree{e.adresse, e.taille, e.sequence};
+    else
+        index_.erase(e.nom);
+}
+```
+
+Avec l'exemple précédent, la liste triée donne seq 10 (FICHIER) puis
+seq 15 (SUPPRESSION) : `a.txt` est ajouté, puis retiré. ✅
+
+Une fois la liste triée, **aucun enregistrement plus ancien ne peut arriver
+après un plus récent** : la question « une ancienne écriture va-t-elle
+écraser ma suppression ? » ne se pose plus. On n'a besoin d'aucun marquage
+particulier.
+
+Quelques remarques :
+
+- **Pourquoi `stable_sort` ?** Après une récupération interrompue (E2), deux
+  copies peuvent avoir la même séquence. Elles sont identiques, donc l'une ou
+  l'autre convient, mais le tri stable garde un résultat prévisible.
+- **Coût** : un vecteur de quelques centaines d'éléments à trier une seule
+  fois, au démarrage. C'est négligeable.
+- **Après le rejeu** : `prochaineSequence_ = plus grande séquence lue + 1`
+  (c'est le dernier élément de la liste triée, si elle n'est pas vide).
+
+### 2.3 Pourquoi pas « taille à 0 » ?
+
+Parce qu'un **fichier vide** (0 octet) est un fichier tout à fait valable :
+`ecrireFichier("vide.txt", {})` doit fonctionner, et `liste()` doit le
+montrer. Si « taille 0 » voulait dire « supprimé », vous ne pourriez plus
+distinguer les deux cas : un fichier vide disparaîtrait au remontage.
+
+Règle générale : **ne jamais donner un sens caché à une valeur qui est déjà
+valide** (taille 0, adresse 0, chaîne vide…). Si on a besoin d'une
+information de plus, on ajoute un champ prévu pour ça.
+
+### 2.4 Et si je tiens à tout faire en une seule passe ?
+
+C'est possible, mais plus délicat. Il faut alors :
+
+- garder pour chaque nom la **dernière séquence vue, y compris pour une
+  suppression**, avec un champ dédié (par exemple `bool supprime` dans
+  l'entrée) : on parle de « pierre tombale » ;
+- **ignorer** tout enregistrement dont la séquence est plus petite que celle
+  déjà connue pour ce nom ;
+- en fin de montage, **retirer** de l'index toutes les entrées marquées
+  supprimées.
+
+Cela marche, mais c'est trois règles à ne pas oublier, contre un simple tri.
+Préférez la solution en deux temps.
+
+### 2.5 Comment le vérifier
+
+- **Socle** : le test de remontage (note 1.4), avec au moins une
+  suppression, et une réécriture d'un fichier après sa suppression. Après
+  remontage, le fichier supprimé doit être absent, le fichier réécrit
+  présent avec son **dernier** contenu.
+- **Avec E2** : remplir la flash jusqu'à forcer une récupération, supprimer
+  un fichier **après** la récupération, puis remonter : le fichier doit
+  rester absent. C'est exactement le cas de l'exemple 2.1.
+
+### 2.6 Deux passes, n'est-ce pas inefficace ?
+
+Non :
+
+- **La flash n'est lue qu'une seule fois.** La deuxième passe se fait en
+  mémoire, sur un petit vecteur de **métadonnées** (nom, type, séquence,
+  adresse, taille). Les données des fichiers ne sont ni copiées ni relues.
+- **Ordre de grandeur** : 8 secteurs de 4 096 octets, un enregistrement
+  d'au moins 17 octets, soit au plus environ 2 000 entrées. Les trier prend
+  quelques dizaines de microsecondes et une centaine de Ko de mémoire.
+- **Le montage n'a lieu qu'une fois**, au démarrage : ce n'est pas une
+  boucle critique.
+- **La version en une passe (2.4) a aussi sa seconde passe**, simplement
+  cachée : parcourir l'index à la fin pour retirer les entrées marquées
+  supprimées, après les avoir gardées en mémoire pendant tout le montage.
+- **Même complexité** : trier coûte n log n, remplir une `std::map` aussi.
+  Le tri n'est pas plus lent ; il est plus simple et plus sûr.
+
+De vrais systèmes de fichiers pour flash font de même : JFFS2, sous Linux,
+relit toute la flash au montage et reconstruit son état en mémoire à partir
+de numéros de version.
+
+Règle générale : écrire d'abord la version **simple et correcte**, et
+n'optimiser que si une **mesure** montre un vrai problème.
