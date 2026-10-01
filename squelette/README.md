@@ -16,6 +16,9 @@ ctest --test-dir build --output-on-failure   # tous les fichiers de tests
 ./build/flashfs                  # affiche l'usage
 ```
 
+Le format sur la flash est détaillé, octet par octet, dans `FORMAT.md` :
+c'est le contrat que votre code doit respecter.
+
 Chaque fichier `tests/test_xxx.cpp` est un petit programme qui devient
 l'exécutable `build/test_xxx`. Les vérifications (`VERIFIER`,
 `VERIFIER_EGAL`, `VERIFIER_LEVE`, `EXIGER`) sont décrites dans

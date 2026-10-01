@@ -62,8 +62,9 @@ Le projet se déroule en **deux phases** :
 
 - **Squelette fourni** par le formateur (dossier `squelette/`) : vous
   partez de lui. Il contient le `CMakeLists.txt`, l'interface imposée
-  `BlockDevice`, des **briques utilitaires déjà écrites** (la hiérarchie
-  d'exceptions `Erreurs.hpp`, le CRC32 et la lecture/écriture
+  `BlockDevice`, le **format détaillé** (`FORMAT.md`), l'en-tête
+  `SystemeFichiers.hpp`, des **briques utilitaires déjà écrites** (la
+  hiérarchie d'exceptions `Erreurs.hpp`, le CRC32 et la lecture/écriture
   little-endian), un petit outil de tests (`tests/Verif.hpp`) et des tests
   d'exemple. Standard **C++17**,
   compilation avec `-Wall -Wextra -Wpedantic -Wshadow -Werror` : **zéro
@@ -194,9 +195,10 @@ et Multithreading (Exos 1 à 10). Le tableau sert de checklist de couverture :
 
 ## Le format sur flash — spécification cadre (IMPOSÉE)
 
-Ce format est **imposé** : il porte la leçon du projet. Vous en précisez
-les détails non fixés (ordre exact des champs du CRC, règles de nommage…)
-dans un `FORMAT.md`. Tous les entiers sont stockés en **little-endian**,
+Ce format est **imposé** : il porte la leçon du projet. Ses détails (ordre
+exact des octets couverts par le CRC, règle de nommage, taille maximale,
+traitement de chaque cas anormal, exemple octet par octet) sont précisés
+dans **`FORMAT.md`, fourni dans le squelette**. Tous les entiers sont stockés en **little-endian**,
 champ par champ. Comme au Projet C, on n'écrit jamais une `struct` brute.
 
 ### Secteurs
@@ -283,7 +285,7 @@ ce qui rend chaque écriture **atomique** (tout ou rien).
 ```
 flashfs/
 ├── CMakeLists.txt            ← FOURNI
-├── FORMAT.md                 ← vos précisions sur le format
+├── FORMAT.md                 ← FOURNI : le format détaillé, octet par octet
 ├── README.md
 ├── include/flashfs/
 │   ├── BlockDevice.hpp       ← FOURNI, interface imposée
@@ -450,16 +452,18 @@ Vous les avez déjà écrites en C au Projet C :
   deux blocs, on passe le résultat du premier en troisième argument ;
 - `ecrireU32` / `lireU32` : un `uint32_t` en little-endian dans un tampon.
 
-## Étape 5 — `FORMAT.md` [SOCLE]
+## Étape 5 — Lire `FORMAT.md` (FOURNI) [SOCLE]
 
-**Une page suffit.** Reprenez la spécification cadre ci-dessus et
-précisez-la : l'ordre exact des octets couverts par le CRC de
-l'enregistrement, la règle de nommage, la taille maximale d'un fichier pour
-la géométrie par défaut, et le traitement de chaque cas anormal à la
-relecture. Comme au Projet C, ce document est votre **contrat** : le
-formateur relit votre code avec lui.
+Vous avez déjà rédigé ce genre de document au Projet C : celui-ci est
+**fourni**. Lisez-le en entier avant l'étape 6. Il précise l'ordre exact
+des octets couverts par le CRC, la règle de nommage, la taille maximale d'un
+fichier, et le traitement de chaque cas anormal à la relecture.
 
-**Tag `v0.1`** (fin de matinée) : `FlashRam` et ses règles physiques, `FORMAT.md` (une page).
+C'est votre **contrat** : le formateur relit votre code avec lui. Son
+exemple octet par octet (le fichier `a.txt` contenant `hi`) vous servira à
+vérifier vos premières écritures sur la flash.
+
+**Tag `v0.1`** (fin de matinée) : `FlashRam` et ses règles physiques.
 
 ## Étape 6 — `SystemeFichiers` : formater, monter, écrire, lire, supprimer [SOCLE]
 
@@ -690,7 +694,7 @@ extension :
 1. passer `valgrind --leak-check=full` sur les tests, puis construire et
    lancer les tests sous ASan (`-DSANITIZE=address`) et TSan
    (`-DSANITIZE=thread`) ; corriger ce qui sort ;
-2. relire `FORMAT.md` face au code, et écrire le `README.md` (compilation,
+2. vérifier que le code respecte `FORMAT.md`, et écrire le `README.md` (compilation,
    architecture, choix, limites connues, extensions réalisées) ;
 3. répéter la démonstration (étape 6) : elle doit tenir en 10 minutes.
 
@@ -704,7 +708,7 @@ qui est évalué** : rien d'autre n'est à livrer ensuite (étape 6).
 
 À n'aborder **qu'une fois le socle terminé et tagué**. Elles sont
 indépendantes les unes des autres. Chaque extension réalisée est testée et
-documentée (`FORMAT.md`, `README.md`) comme le reste du projet.
+documentée (dans le `README.md`) comme le reste du projet.
 
 ### E1 — `fsck` : vérifier la cohérence
 
@@ -930,7 +934,7 @@ Finalisez le `README.md` (usage, architecture, choix, limites connues,
 - [ ] **Valgrind : 0 fuite** sur les tests
 - [ ] **ThreadSanitizer : 0 alerte** sur les tests (dont `Concurrence` : 2 écrivains, 1 lecteur, un `std::mutex`)
 - [ ] `Fichier` non copiable (vérifié par `static_assert`), déplaçable, validé en fin de portée
-- [ ] `FORMAT.md` cohérent avec le code
+- [ ] Le code respecte `FORMAT.md` (fourni)
 - [ ] `README.md` : usage, architecture, limites, **extensions réalisées**
 - [ ] Démonstration réalisée sur le tag `v1.0` (live, ou vidéo avec lien fonctionnel)
 
