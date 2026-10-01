@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FlashFS en schémas</title>
+<meta name="description" content="Projet C++ FlashFS : la mémoire flash simulée et le système de fichiers en schémas (format, écriture en deux temps, montage).">
+<style>
+@font-face { font-family: "Atkinson Hyperlegible"; font-style: normal; font-weight: 400; font-display: swap; src: url(fonts/atkinson-hyperlegible-400.woff2) format("woff2"); }
+@font-face { font-family: "Atkinson Hyperlegible"; font-style: italic; font-weight: 400; font-display: swap; src: url(fonts/atkinson-hyperlegible-400-italic.woff2) format("woff2"); }
+@font-face { font-family: "Atkinson Hyperlegible"; font-style: normal; font-weight: 700; font-display: swap; src: url(fonts/atkinson-hyperlegible-700.woff2) format("woff2"); }
+@font-face { font-family: "Bricolage Grotesque"; font-style: normal; font-weight: 600 800; font-display: swap; src: url(fonts/bricolage-grotesque-variable.woff2) format("woff2"); }
+@font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 400 600; font-display: swap; src: url(fonts/jetbrains-mono-variable.woff2) format("woff2"); }
+*, *::before, *::after { box-sizing: border-box; }
+html { color-scheme: light; -webkit-text-size-adjust: 100%; }
+body { margin: 0; }
+footer { border-top: 1px solid var(--line); padding-top: 20px; font-size: 14px; color: var(--muted); display: grid; gap: 6px; }
+footer a, header a { color: var(--flash); }
+</style>
+<style>
+/* Mise en page : une fiche technique en une colonne ; deux couleurs porteuses de sens,
+   sarcelle = la flash (conservée), ambre = la mémoire du programme (perdue), rouge = la coupure. */
+:root {
+  --bg: #f2f5f7;
+  --panel: #ffffff;
+  --fg: #16212b;
+  --muted: #5a6875;
+  --line: #c4ced8;
+  --flash: #0b7a6b;
+  --flash-soft: #dcf0ec;
+  --ram: #a85607;
+  --ram-soft: #fbead6;
+  --cut: #c23a2c;
+  --cut-soft: #fbe4e1;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11171c; --panel: #19222a; --fg: #e4eaef; --muted: #96a4b1; --line: #33414e;
+    --flash: #52c4b0; --flash-soft: #163934; --ram: #f0a65f; --ram-soft: #3b2814;
+    --cut: #ff7c6c; --cut-soft: #3d1c19; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11171c; --panel: #19222a; --fg: #e4eaef; --muted: #96a4b1; --line: #33414e;
+  --flash: #52c4b0; --flash-soft: #163934; --ram: #f0a65f; --ram-soft: #3b2814;
+  --cut: #ff7c6c; --cut-soft: #3d1c19; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 16px; line-height: 1.55; }
+.page { max-width: 860px; margin: 0 auto; padding-inline: 16px; padding-block: 40px 64px; display: grid; gap: 44px; }
+header { display: grid; gap: 12px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--display); font-weight: 800; font-size: clamp(30px, 6vw, 44px); line-height: 1.05; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 600; font-size: 24px; line-height: 1.2; margin: 0; text-wrap: balance; }
+p { margin: 0; max-width: 68ch; }
+section { display: grid; gap: 16px; }
+.lead { font-size: 18px; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px 18px; font-size: 14px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.sw { width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid; display: inline-block; }
+.sw.flash { background: var(--flash-soft); border-color: var(--flash); }
+.sw.ram { background: var(--ram-soft); border-color: var(--ram); }
+.sw.cut { background: var(--cut-soft); border-color: var(--cut); border-style: dashed; }
+figure { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 12px; }
+.fig-scroll { overflow-x: auto; }
+figcaption { font-size: 14px; color: var(--muted); max-width: 72ch; }
+code, .mono { font-family: var(--mono); font-size: .88em; }
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+.table-scroll { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; }
+td.ok { color: var(--flash); font-weight: 700; }
+td.ko { color: var(--cut); font-weight: 700; }
+.note { border-left: 3px solid var(--flash); padding: 4px 0 4px 14px; max-width: 68ch; }
+
+/* Les schémas : tout passe par les jetons, donc lisible dans les deux thèmes. */
+svg.dg { display: block; width: 100%; min-width: 660px; height: auto; color: var(--fg); font-family: var(--body); }
+.dg text { fill: currentColor; font-size: 12.5px; }
+.dg .t { font-weight: 700; font-size: 13.5px; }
+.dg .s { fill: var(--muted); font-size: 11.5px; }
+.dg .m { font-family: var(--mono); font-size: 11px; }
+.dg .ram-t { fill: var(--ram); font-weight: 700; }
+.dg .flash-t { fill: var(--flash); font-weight: 700; }
+.dg .cut-t { fill: var(--cut); font-weight: 700; }
+.dg .box { fill: var(--panel); stroke: var(--line); stroke-width: 1.3; }
+.dg .ram { fill: var(--ram-soft); stroke: var(--ram); stroke-width: 1.5; }
+.dg .flash { fill: var(--flash-soft); stroke: var(--flash); stroke-width: 1.5; }
+.dg .flash-strong { fill: var(--flash-soft); stroke: var(--flash); stroke-width: 3; }
+.dg .cut { fill: var(--cut-soft); stroke: var(--cut); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.dg .edge { stroke: currentColor; stroke-width: 1.4; fill: none; }
+.dg .guide { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 4; fill: none; }
+.dg .iface { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 8 5; }
+.dg .head { fill: currentColor; }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <header>
+    <div class="eyebrow">Projet C++ FlashFS · pour comprendre</div>
+    <h1>FlashFS en schémas</h1>
+    <p class="lead">Deux couches. En bas, la <strong>mémoire flash simulée</strong> : un matériel qui ne sait faire que trois choses, avec des règles strictes. Au-dessus, le <strong>système de fichiers</strong> : le logiciel qui range des fichiers sur cette flash en respectant ses règles, et qui doit survivre à une coupure de courant.</p>
+    <div class="legend" aria-label="Légende des couleurs">
+      <span><i class="sw flash"></i>flash : conservée à l'extinction</span>
+      <span><i class="sw ram"></i>mémoire du programme : perdue à l'extinction</span>
+      <span><i class="sw cut"></i>coupure de courant (Phase 2)</span>
+    </div>
+  </header>
+
+  <!-- 1. Qui parle à qui -->
+  <section>
+    <h2>1. Qui parle à qui</h2>
+    <figure>
+      <div class="fig-scroll">
+        <svg class="dg" viewBox="0 0 760 430" role="img" aria-label="Les tests appellent le système de fichiers, qui ne parle à la flash qu'à travers l'interface BlockDevice : lire, programmer, effacer. La poignée Fichier tamponne le contenu et appelle le système de fichiers à la fermeture.">
+          <defs>
+            <marker id="h1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker>
+          </defs>
+
+          <!-- appelants -->
+          <rect class="box" x="250" y="14" width="260" height="44" rx="6"/>
+          <text class="t" x="380" y="41" text-anchor="middle">Vos tests · le shell (E3)</text>
+
+          <!-- poignée Fichier -->
+          <rect class="ram" x="20" y="120" width="180" height="90" rx="6"/>
+          <text class="t" x="110" y="146" text-anchor="middle">Fichier (poignée)</text>
+          <text x="110" y="168" text-anchor="middle">tampon en mémoire</text>
+          <text x="110" y="188" text-anchor="middle">écrit à la fermeture</text>
+          <polyline class="edge" points="250,36 110,36 110,117" marker-end="url(#h1)"/>
+          <text class="s" x="118" y="100">ouvrir · ecrire</text>
+          <line class="edge" x1="200" y1="165" x2="247" y2="165" marker-end="url(#h1)"/>
+          <text class="s" x="224" y="156" text-anchor="middle">fermer()</text>
+
+          <!-- système de fichiers -->
+          <rect class="ram" x="250" y="110" width="260" height="130" rx="6"/>
+          <text class="t" x="380" y="136" text-anchor="middle">SystemeFichiers</text>
+          <text x="380" y="161" text-anchor="middle">index : nom → adresse, taille</text>
+          <text x="380" y="183" text-anchor="middle">secteur actif</text>
+          <text x="380" y="205" text-anchor="middle">compteurs de séquence</text>
+          <text class="s" x="380" y="228" text-anchor="middle">tout est reconstruit au montage</text>
+          <line class="edge" x1="380" y1="58" x2="380" y2="107" marker-end="url(#h1)"/>
+          <text class="s" x="390" y="88">ecrireFichier · lireFichier · supprimer · liste</text>
+          <text class="ram-t" x="528" y="168">perdu à l'extinction</text>
+          <text class="s" x="528" y="188">(index, actif, compteurs)</text>
+
+          <!-- interface -->
+          <line class="iface" x1="20" y1="280" x2="740" y2="280"/>
+          <text class="s" x="20" y="270">BlockDevice&amp; : l'interface imposée, la seule chose que le système de fichiers connaît de la flash</text>
+          <line class="edge" x1="350" y1="240" x2="350" y2="317" marker-end="url(#h1)"/>
+          <text class="s" x="342" y="305" text-anchor="end">programmer · effacer</text>
+          <line class="edge" x1="410" y1="318" x2="410" y2="243" marker-end="url(#h1)"/>
+          <text class="s" x="418" y="305">lire</text>
+
+          <!-- flash -->
+          <rect class="flash" x="250" y="320" width="260" height="90" rx="6"/>
+          <text class="t" x="380" y="346" text-anchor="middle">FlashRam</text>
+          <text x="380" y="368" text-anchor="middle">octets (tout à FF au départ)</text>
+          <text x="380" y="390" text-anchor="middle">usure : effacements par secteur</text>
+          <text class="flash-t" x="232" y="360" text-anchor="end">conservé à l'extinction</text>
+          <text class="s" x="232" y="380" text-anchor="end">(simulé par un objet qui survit)</text>
+
+          <!-- décorateur Phase 2 -->
+          <rect class="cut" x="560" y="320" width="180" height="90" rx="6"/>
+          <text class="t" x="650" y="346" text-anchor="middle">FlashInstable</text>
+          <text x="650" y="368" text-anchor="middle">coupe le courant</text>
+          <text x="650" y="390" text-anchor="middle">à la N-ième écriture</text>
+          <line class="edge" x1="558" y1="365" x2="513" y2="365" marker-end="url(#h1)"/>
+          <text class="s" x="536" y="356" text-anchor="middle">enveloppe</text>
+        </svg>
+      </div>
+      <figcaption>Le système de fichiers ne voit jamais « une FlashRam » : il ne connaît que l'interface <code>BlockDevice</code>. C'est ce qui permet, en Phase 2, de glisser <code>FlashInstable</code> entre les deux sans changer une ligne du système de fichiers. Tout ce qui est en ambre est perdu à l'extinction ; seule la flash reste.</figcaption>
+    </figure>
+  </section>
+
+  <!-- 2. Les règles de la flash -->
+  <section>
+    <h2>2. La flash : trois opérations, des règles strictes</h2>
+    <p>Une flash neuve est entièrement à <code>FF</code> (tous les bits à 1). Écrire, c'est seulement <strong>éteindre</strong> des bits ; pour les rallumer, il faut effacer tout un secteur, ce qui l'use.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Opération</th><th>Exemple</th><th>Résultat</th></tr></thead>
+        <tbody>
+          <tr><td><code>lire(adresse, n)</code></td><td>n'importe quel octet existant</td><td class="ok">toujours permis</td></tr>
+          <tr><td><code>programmer</code> : bits 1 → 0</td><td><code>FF</code> → <code>5A</code>, puis <code>5A</code> → <code>50</code></td><td class="ok">accepté</td></tr>
+          <tr><td><code>programmer</code> : un bit 0 → 1</td><td><code>5A</code> → <code>A5</code></td><td class="ko">refusé, rien n'est écrit (<code>ProgrammationInterdite</code>)</td></tr>
+          <tr><td><code>effacer(secteur)</code></td><td>tout le secteur repasse à <code>FF</code></td><td class="ok">accepté, usure + 1</td></tr>
+          <tr><td><code>effacer</code> au-delà de l'endurance</td><td>1001<sup>e</sup> effacement (endurance 1000)</td><td class="ko">refusé (<code>SecteurUse</code>)</td></tr>
+          <tr><td>adresse hors de la flash</td><td>lire 8 octets à 4 du bout</td><td class="ko">refusé (<code>AdresseInvalide</code>)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 3. Ce qu'il y a sur la flash -->
+  <section>
+    <h2>3. Ce qu'il y a sur la flash</h2>
+    <figure>
+      <div class="fig-scroll">
+        <svg class="dg" viewBox="0 0 760 330" role="img" aria-label="La flash est découpée en secteurs, chacun libre, utilisé ou sale. Un secteur utilisé commence par un en-tête de 16 octets, puis des enregistrements écrits à la suite, puis une zone libre. Un enregistrement commence par l'octet etat, puis type, longueur du nom, séquence, taille, CRC, le nom et les données.">
+          <defs>
+            <marker id="h3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker>
+          </defs>
+          <text class="s" x="20" y="18">La flash : des secteurs de taille fixe (ici 4)</text>
+
+          <rect class="flash" x="20" y="30" width="165" height="70" rx="5"/>
+          <text class="t" x="102" y="54" text-anchor="middle">Secteur 0</text>
+          <text x="102" y="74" text-anchor="middle">utilisé · séquence 1</text>
+          <text class="s" x="102" y="91" text-anchor="middle">plein</text>
+
+          <rect class="flash-strong" x="205" y="30" width="165" height="70" rx="5"/>
+          <text class="t" x="287" y="54" text-anchor="middle">Secteur 1</text>
+          <text x="287" y="74" text-anchor="middle">utilisé · séquence 2</text>
+          <text class="flash-t" x="287" y="91" text-anchor="middle">actif : on écrit ici</text>
+
+          <rect class="box" x="390" y="30" width="165" height="70" rx="5"/>
+          <text class="t" x="472" y="54" text-anchor="middle">Secteur 2</text>
+          <text x="472" y="74" text-anchor="middle">libre</text>
+          <text class="s" x="472" y="91" text-anchor="middle">tout à FF</text>
+
+          <rect class="cut" x="575" y="30" width="165" height="70" rx="5"/>
+          <text class="t" x="657" y="54" text-anchor="middle">Secteur 3</text>
+          <text x="657" y="74" text-anchor="middle">sale</text>
+          <text class="s" x="657" y="91" text-anchor="middle">en-tête coupé : à effacer</text>
+
+          <!-- zoom sur le secteur 1 -->
+          <line class="guide" x1="205" y1="100" x2="20" y2="150"/>
+          <line class="guide" x1="370" y1="100" x2="740" y2="150"/>
+          <rect class="flash" x="20" y="150" width="120" height="56"/>
+          <text class="t" x="80" y="174" text-anchor="middle">en-tête 16 o</text>
+          <text class="s m" x="80" y="193" text-anchor="middle">FFS1 · seq · CRC</text>
+          <rect class="box" x="140" y="150" width="200" height="56"/>
+          <text class="t" x="240" y="174" text-anchor="middle">enregistrement</text>
+          <text class="s" x="240" y="193" text-anchor="middle">a.txt contient « hi »</text>
+          <rect class="box" x="340" y="150" width="200" height="56"/>
+          <text class="t" x="440" y="174" text-anchor="middle">enregistrement</text>
+          <text class="s" x="440" y="193" text-anchor="middle">b.txt est supprimé</text>
+          <rect class="box" x="540" y="150" width="200" height="56"/>
+          <text class="t" x="640" y="174" text-anchor="middle">zone libre (FF)</text>
+          <text class="s" x="640" y="193" text-anchor="middle">la prochaine écriture va ici</text>
+          <text class="s" x="540" y="140" text-anchor="middle">fin ▼</text>
+
+          <!-- détail d'un enregistrement -->
+          <line class="guide" x1="140" y1="206" x2="20" y2="250"/>
+          <line class="guide" x1="340" y1="206" x2="710" y2="250"/>
+          <g>
+            <rect class="flash-strong" x="20" y="250" width="50" height="50"/>
+            <text class="t" x="45" y="270" text-anchor="middle">etat</text>
+            <text class="m" x="45" y="290" text-anchor="middle">00</text>
+            <rect class="box" x="70" y="250" width="50" height="50"/>
+            <text x="95" y="270" text-anchor="middle">type</text>
+            <text class="m" x="95" y="290" text-anchor="middle">01</text>
+            <rect class="box" x="120" y="250" width="55" height="50"/>
+            <text x="147" y="270" text-anchor="middle">lgNom</text>
+            <text class="m" x="147" y="290" text-anchor="middle">05</text>
+            <rect class="box" x="175" y="250" width="45" height="50"/>
+            <text x="197" y="270" text-anchor="middle">rés.</text>
+            <text class="m" x="197" y="290" text-anchor="middle">FF</text>
+            <rect class="box" x="220" y="250" width="95" height="50"/>
+            <text x="267" y="270" text-anchor="middle">séquence</text>
+            <text class="m" x="267" y="290" text-anchor="middle">01 00 00 00</text>
+            <rect class="box" x="315" y="250" width="95" height="50"/>
+            <text x="362" y="270" text-anchor="middle">taille</text>
+            <text class="m" x="362" y="290" text-anchor="middle">02 00 00 00</text>
+            <rect class="box" x="410" y="250" width="95" height="50"/>
+            <text x="457" y="270" text-anchor="middle">crc32</text>
+            <text class="m" x="457" y="290" text-anchor="middle">6a db 0d e8</text>
+            <rect class="box" x="505" y="250" width="110" height="50"/>
+            <text x="560" y="270" text-anchor="middle">nom</text>
+            <text class="m" x="560" y="290" text-anchor="middle">a.txt</text>
+            <rect class="box" x="615" y="250" width="95" height="50"/>
+            <text x="662" y="270" text-anchor="middle">données</text>
+            <text class="m" x="662" y="290" text-anchor="middle">hi</text>
+          </g>
+          <text class="s" x="20" y="320">les 16 premiers octets forment l'en-tête de l'enregistrement ; puis le nom et les données</text>
+        </svg>
+      </div>
+      <figcaption>Exemple réel de <code>FORMAT.md</code> : le fichier <code>a.txt</code> contenant <code>hi</code>. On n'écrit <strong>jamais</strong> par-dessus : chaque opération (écrire, remplacer, supprimer) ajoute un enregistrement à la suite, comme une ligne dans un journal de bord. L'octet <code>etat</code>, en tête, est la clé de la section suivante.</figcaption>
+    </figure>
+  </section>
+
+  <!-- 4. Écrire -->
+  <section>
+    <h2>4. Écrire un fichier : en deux temps</h2>
+    <figure>
+      <div class="fig-scroll">
+        <svg class="dg" viewBox="0 0 760 300" role="img" aria-label="Écriture en deux temps. Temps 1 : tout l'enregistrement est programmé avec etat à FF. Temps 2 : seul l'octet etat passe de FF à 00. Une coupure avant la fin du temps 2 laisse etat à FF, et l'enregistrement est ignoré au redémarrage.">
+          <defs>
+            <marker id="h4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker>
+          </defs>
+          <text class="s" x="180" y="14">etat</text>
+          <text class="s" x="240" y="14">reste de l'enregistrement</text>
+          <text class="s" x="620" y="14">si le courant coupe ici</text>
+
+          <!-- avant -->
+          <text class="t" x="20" y="49">Avant</text>
+          <rect class="box" x="180" y="22" width="60" height="44"/>
+          <text class="m" x="210" y="49" text-anchor="middle">FF</text>
+          <rect class="box" x="240" y="22" width="360" height="44"/>
+          <text class="m" x="420" y="49" text-anchor="middle">FF FF FF FF … (zone libre)</text>
+          <text class="cut-t" x="620" y="40">coupure :</text>
+          <text x="620" y="58">rien n'a changé</text>
+
+          <line class="edge" x1="360" y1="68" x2="360" y2="124" marker-end="url(#h4)"/>
+          <text class="s" x="372" y="100">temps 1 : programmer tout, sauf etat</text>
+
+          <!-- temps 1 -->
+          <text class="t" x="20" y="153">Temps 1</text>
+          <text class="s" x="20" y="170">non validé</text>
+          <rect class="cut" x="180" y="126" width="60" height="44"/>
+          <text class="m" x="210" y="153" text-anchor="middle">FF</text>
+          <rect class="box" x="240" y="126" width="360" height="44"/>
+          <text class="m" x="420" y="153" text-anchor="middle">01 05 FF 01 00 00 00 … a.txt hi</text>
+          <text class="cut-t" x="620" y="138">coupure : etat = FF</text>
+          <text x="620" y="156">→ ignoré au montage,</text>
+          <text x="620" y="174">l'ancienne version reste</text>
+
+          <line class="edge" x1="360" y1="172" x2="360" y2="228" marker-end="url(#h4)"/>
+          <text class="s" x="372" y="204">temps 2 : programmer 1 octet, etat FF → 00</text>
+
+          <!-- temps 2 -->
+          <text class="t" x="20" y="257">Temps 2</text>
+          <text class="s" x="20" y="274">validé</text>
+          <rect class="flash-strong" x="180" y="230" width="60" height="44"/>
+          <text class="m" x="210" y="257" text-anchor="middle">00</text>
+          <rect class="box" x="240" y="230" width="360" height="44"/>
+          <text class="m" x="420" y="257" text-anchor="middle">01 05 FF 01 00 00 00 … a.txt hi</text>
+          <text class="flash-t" x="620" y="248">validé :</text>
+          <text x="620" y="266">nouvelle version, puis</text>
+          <text x="620" y="284">mise à jour de l'index</text>
+        </svg>
+      </div>
+      <figcaption>Passer <code>etat</code> de <code>FF</code> à <code>00</code>, c'est éteindre des bits : permis sans effacement. Comme cet octet est écrit <strong>en dernier</strong>, une écriture coupée garde <code>etat = FF</code> et ne compte pas. Un fichier est donc toujours entièrement ancien ou entièrement nouveau. S'il n'y a plus de place dans le secteur actif, on met d'abord un nouveau secteur en service (en-tête « FFS1 » avec la séquence suivante).</figcaption>
+    </figure>
+    <p class="note"><strong>Lire</strong> un fichier est bien plus simple : l'index en mémoire donne l'adresse de la dernière version, et un seul <code>lire()</code> sur la flash ramène les données. La flash n'est relue en entier qu'au montage.</p>
+  </section>
+
+  <!-- 5. Montage -->
+  <section>
+    <h2>5. Redémarrer l'appareil : le montage</h2>
+    <p>À l'extinction, tout ce qui est en ambre disparaît. Au redémarrage, le constructeur de <code>SystemeFichiers</code> reconstruit tout à partir des seuls octets de la flash.</p>
+    <figure>
+      <div class="fig-scroll">
+        <svg class="dg" viewBox="0 0 760 290" role="img" aria-label="Le montage lit la flash, classe chaque secteur, garde les enregistrements valides, les trie par séquence puis les rejoue, ce qui reconstruit l'index, le secteur actif et les compteurs en mémoire.">
+          <defs>
+            <marker id="h5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker>
+          </defs>
+          <rect class="flash" x="20" y="24" width="130" height="96" rx="6"/>
+          <text class="t" x="85" y="62" text-anchor="middle">Flash</text>
+          <text class="s" x="85" y="82" text-anchor="middle">seule source</text>
+          <text class="s" x="85" y="98" text-anchor="middle">au démarrage</text>
+          <line class="edge" x1="150" y1="72" x2="182" y2="72" marker-end="url(#h5)"/>
+
+          <rect class="box" x="185" y="24" width="165" height="96" rx="6"/>
+          <text class="t" x="267" y="54" text-anchor="middle">1. Classer</text>
+          <text class="t" x="267" y="72" text-anchor="middle">chaque secteur</text>
+          <text class="s" x="267" y="96" text-anchor="middle">libre · utilisé · sale</text>
+          <line class="edge" x1="350" y1="72" x2="382" y2="72" marker-end="url(#h5)"/>
+
+          <rect class="box" x="385" y="24" width="165" height="96" rx="6"/>
+          <text class="t" x="467" y="54" text-anchor="middle">2. Lire les</text>
+          <text class="t" x="467" y="72" text-anchor="middle">enregistrements</text>
+          <text class="s" x="467" y="96" text-anchor="middle">etat = 00 et CRC juste</text>
+          <line class="edge" x1="550" y1="72" x2="572" y2="72" marker-end="url(#h5)"/>
+
+          <rect class="box" x="575" y="24" width="165" height="96" rx="6"/>
+          <text class="t" x="657" y="54" text-anchor="middle">3. Trier</text>
+          <text class="t" x="657" y="72" text-anchor="middle">par séquence</text>
+          <text class="s" x="657" y="96" text-anchor="middle">ordre chronologique</text>
+          <line class="edge" x1="657" y1="120" x2="657" y2="167" marker-end="url(#h5)"/>
+
+          <rect class="box" x="575" y="170" width="165" height="96" rx="6"/>
+          <text class="t" x="657" y="200" text-anchor="middle">4. Rejouer</text>
+          <text class="t" x="657" y="218" text-anchor="middle">dans l'ordre</text>
+          <text class="s" x="657" y="242" text-anchor="middle">la dernière mention gagne</text>
+          <line class="edge" x1="575" y1="218" x2="521" y2="218" marker-end="url(#h5)"/>
+
+          <rect class="ram" x="185" y="170" width="333" height="96" rx="6"/>
+          <text class="t" x="351" y="196" text-anchor="middle">Mémoire du programme, reconstruite</text>
+          <text x="351" y="218" text-anchor="middle">index : chaque nom → sa dernière version</text>
+          <text x="351" y="238" text-anchor="middle">secteur actif : plus grande séquence de secteur</text>
+          <text x="351" y="258" text-anchor="middle">compteurs : plus grande séquence lue + 1</text>
+
+          <text class="s" x="20" y="200">ignorés en route :</text>
+          <text class="s" x="20" y="220">secteurs sales,</text>
+          <text class="s" x="20" y="240">écritures coupées</text>
+          <text class="s" x="20" y="260">(etat = FF)</text>
+        </svg>
+      </div>
+      <figcaption>C'est ce que vérifie le test de remontage exigé : détruire le <code>SystemeFichiers</code>, en créer un nouveau sur la même flash, et retrouver exactement les mêmes fichiers. Le numéro de séquence est indispensable ici : la position sur la flash ne dit pas l'ordre dans lequel les choses ont été écrites.</figcaption>
+    </figure>
+
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Séquence</th><th>Enregistrement relu</th><th>Index après rejeu</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">1</td><td>FICHIER <code>a.txt</code> = « v1 »</td><td><code>a.txt</code> → v1</td></tr>
+          <tr><td class="mono">2</td><td>FICHIER <code>b.txt</code> = « note »</td><td><code>a.txt</code> → v1 · <code>b.txt</code> → note</td></tr>
+          <tr><td class="mono">3</td><td>FICHIER <code>a.txt</code> = « v2 »</td><td><code>a.txt</code> → v2 · <code>b.txt</code> → note</td></tr>
+          <tr><td class="mono">4</td><td>SUPPRESSION <code>b.txt</code></td><td><code>a.txt</code> → v2</td></tr>
+          <tr><td class="mono">5</td><td>FICHIER <code>c.txt</code>, <code>etat = FF</code> (coupure)</td><td>ignoré : <code>a.txt</code> → v2</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Ce que chaque partie garantit</h2>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Mécanisme</th><th>Ce qu'il garantit</th><th>Où le vérifier</th></tr></thead>
+        <tbody>
+          <tr><td>Règles de la flash</td><td>le logiciel ne peut pas tricher avec le matériel</td><td><code>test_flash</code></td></tr>
+          <tr><td>Journal (on ajoute, on ne corrige pas)</td><td>aucune écriture n'abîme une donnée déjà validée</td><td><code>test_fs</code></td></tr>
+          <tr><td>Octet <code>etat</code> écrit en dernier</td><td>un fichier est tout ancien ou tout nouveau, même après coupure</td><td><code>test_coupures</code> (Phase 2)</td></tr>
+          <tr><td>CRC</td><td>un octet abîmé est détecté au lieu d'être cru</td><td>montage, <code>fsck</code> (E1)</td></tr>
+          <tr><td>Séquences</td><td>l'ordre des opérations se retrouve après redémarrage</td><td>test de remontage (exigé)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+  <footer>
+    <p>Les règles exactes sont dans l'énoncé et dans <code>FORMAT.md</code> : en cas de doute, ce sont eux qui font foi.</p>
+    <p>Dépôt du projet : <a href="https://github.com/cdufour/projet-cpp-flashfs">github.com/cdufour/projet-cpp-flashfs</a> · précisions : <a href="https://github.com/cdufour/projet-cpp-flashfs/blob/main/notes-complementaires.md">notes complémentaires</a></p>
+  </footer>
+</div>
+</body>
+</html>

@@ -12,6 +12,7 @@ mémoire flash simulée.
 | [`squelette/`](squelette/) | Le point de départ de votre projet : à copier dans votre dépôt GitLab `flashfs` (étape 1 de la Phase 1) |
 | [`groupes.txt`](groupes.txt) | La composition des binômes |
 | [`notes-complementaires.md`](notes-complementaires.md) | Précisions ajoutées pendant le projet, à partir de vos questions |
+| [FlashFS en schémas](https://ajc.opusidea.fr/projet-cpp/schema/) | La flash simulée et le système de fichiers en schémas : format, écriture en deux temps, montage (source : [`site/`](site/)) |
 
 D'autres ressources pourront être ajoutées ici pendant le projet.
 

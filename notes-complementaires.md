@@ -4,6 +4,8 @@ Précisions sur l'énoncé et sur `FORMAT.md`, ajoutées pendant le projet à
 partir de vos questions. Elles ne changent pas ce qui est demandé : elles
 l'expliquent. La plus récente est en bas.
 
+Pour une vue d'ensemble illustrée : [FlashFS en schémas](https://ajc.opusidea.fr/projet-cpp/schema/).
+
 ## Sommaire
 
 1. [Le champ `sequence`](#1-le-champ-sequence) (01/10/2026)
