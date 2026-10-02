@@ -950,10 +950,14 @@ Finalisez le `README.md` (usage, architecture, choix, limites connues,
 
 ## Rappels et pièges
 
-- **Octet `etat` en dernier.** Si vous le programmez avec l'en-tête,
-  l'écriture n'est plus atomique : une coupure pendant les données laisse
-  un enregistrement « validé » mais tronqué. Votre test exhaustif doit le
-  détecter : essayez !
+- **Octet `etat` en dernier.** Si vous le programmez avec l'en-tête, une
+  coupure pendant les données laisse un enregistrement « validé » mais
+  tronqué. Au montage, son CRC faux le fait ignorer quand même : le test de
+  coupures **reste vert**, il ne suffit donc pas à prouver que l'ordre est
+  bon. La différence se voit avec `fsck` (extension E1) : un enregistrement
+  non validé est une simple coupure, un enregistrement validé au CRC faux
+  est une **corruption** (code 7). Écrire `etat` en dernier, c'est ce qui
+  permet de distinguer les deux.
 - **Vérifier avant d'écrire.** Une programmation refusée
   (`ProgrammationInterdite`) ne doit rien modifier. Contrôlez tous les
   octets, puis écrivez.
