@@ -50,7 +50,7 @@ Le projet se déroule en **deux phases** :
 | Phase   | Contenu                                                                 | Jour       |
 | ------- | ----------------------------------------------------------------------- | ---------- |
 | Phase 1 | Flash simulée, format sur flash, système de fichiers, poignée (*handle*) `Fichier` : une **bibliothèque testée** | Journée 1 |
-| Phase 2 | Coupures de courant, concurrence, finalisation, restitution (puis extensions) | Journée 2 |
+| Phase 2 | Coupures de courant, concurrence, finalisation, rendu (puis extensions) | Journée 2 |
 
 
 **Méthode de travail.** Vous travaillez en binôme, en toute autonomie. Vous
@@ -122,8 +122,8 @@ Chaque étape de l'énoncé porte l'étiquette **[SOCLE]** ou **[EXTENSION]**.
 c'est accepté pour le socle.
 
 **Le socle est une bibliothèque testée**, sans programme exécutable à écrire :
-la démonstration se fait par les tests (`ctest`, test de coupures lancé en
-direct, Valgrind, TSan). Le shell, qui rend le projet manipulable à la main,
+la preuve se fait par les tests (`ctest`, test de coupures, Valgrind, TSan),
+que le formateur relance sur votre branche `main`. Le shell, qui rend le projet manipulable à la main,
 est l'extension E3.
 
 **Les invariants ne bougent pas**, quel que soit votre niveau d'ambition :
@@ -158,10 +158,10 @@ fonctionne à l'identique sur les trois mémoires. C'est le même découplage
 que l'abstraction de source du Projet C, avec un outil C++ différent
 (héritage et fonctions virtuelles au lieu de pointeurs de fonctions).
 
-**Démonstration du socle** (voir l'annexe A.0) :
+**Vérification du socle** par le formateur (voir l'étape 6 de la Phase 2 et l'annexe A.0) :
 
 ```text
-build depuis zéro ──► ctest vert ──► test Coupures en direct (N positions, toutes cohérentes) ──► Valgrind ──► TSan
+build depuis zéro ──► ctest vert ──► test Coupures (N positions, toutes cohérentes) ──► Valgrind ──► TSan
 ```
 
 **Session type avec l'extension E3** (voir l'annexe A.1 et suivantes) :
@@ -652,7 +652,8 @@ Les états attendus sont calculés par un **oracle** : un simple
 `std::map<std::string, std::string>` mis à jour à chaque opération réussie
 de S. Le test doit parcourir **toutes** les positions de coupure possibles
 du scénario (plusieurs dizaines), vérifier qu'il y en a bien eu, et
-**afficher leur nombre** : c'est le moment fort de la démonstration.
+**afficher leur nombre** : c'est la preuve visible que toutes les coupures
+ont été essayées.
 
 C'est **le cœur du projet** : un socle sans ce test vert n'est pas un socle.
 
@@ -696,13 +697,14 @@ extension :
    (`-DSANITIZE=thread`) ; corriger ce qui sort ;
 2. vérifier que le code respecte `FORMAT.md`, et écrire le `README.md` (compilation,
    architecture, choix, limites connues, extensions réalisées) ;
-3. répéter la démonstration (étape 6) : elle doit tenir en 10 minutes.
+3. rejouer, sur un clone neuf de `main`, le parcours de vérification de
+   l'étape 6.
 
 Ensuite seulement, les extensions (étape 5).
 
-**Tag `v1.0`** (fin de journée 2, avant la restitution) : socle complet et
-propre, `README.md` finalisé, et les extensions réalisées. **C'est ce tag
-qui est évalué** : rien d'autre n'est à livrer ensuite (étape 6).
+**Tag `v1.0`** (fin de journée 2) : socle complet et propre, `README.md`
+finalisé, et les extensions réalisées, sur une branche `main` propre. **C'est
+ce tag qui est évalué** : rien d'autre n'est à livrer ensuite (étape 6).
 
 ## Étape 5 — Extensions [EXTENSION]
 
@@ -821,7 +823,7 @@ flashfs <image> [--creer] [--secteurs N] [--taille-secteur T] [--endurance E] [-
 - **`--coupure N`** : l'image est enveloppée dans une `FlashInstable`. À la
   coupure, le shell s'arrête immédiatement avec le code **6**, et l'image
   contient exactement l'état de la flash à cet instant. C'est la **démo
-  coupure au shell**, très parlante en restitution.
+  coupure au shell** (annexe A.4).
 
 - Le shell est une **table de commandes** : une `std::map` qui associe
   le nom de chaque commande à une `std::function`, remplie de lambdas. Par
@@ -887,39 +889,50 @@ Test suggéré : un script du shell passé sous Valgrind.
 - **CRC d'en-tête séparé** : permet de sauter un enregistrement dont seules
   les données sont corrompues, au lieu de perdre la fin du secteur.
 
-## Étape 6 — Restitution [SOCLE]
+## Étape 6 — Rendu final [SOCLE]
 
-En fin de journée 2 : **démonstration de 10 minutes par binôme, sur
-l'existant**. On montre le dépôt au tag `v1.0`, tel qu'il est : **aucune
-livraison supplémentaire** n'est attendue après la fin du module, et on ne
-code pas pendant la démo.
+**Pas de démonstration ni de vidéo.** Le rendu, c'est la **branche `main`**
+de votre dépôt GitLab, taguée **`v1.0`**, en fin de journée 2. Le formateur
+la clone et vérifie lui-même le travail. Aucune livraison n'est attendue
+après la fin du module : le code n'évolue plus après le tag `v1.0`.
 
-Si une partie du socle n'est pas terminée, présentez-la **honnêtement** :
-ce qui marche, ce qui manque, et comment vous l'auriez terminée. Ce qui
-manque est compté comme manquant, mais une présentation lucide est
-appréciée, alors qu'une démo qui cache un problème ne l'est pas.
+Une branche `main` **propre**, c'est :
 
-1. Build depuis zéro sur la VM Debian, puis `ctest` vert.
-2. **La démo coupure** : lancer le test de coupures en direct
-   (`./build/test_coupures`), qui affiche le
-   nombre de positions de coupure essayées, toutes cohérentes. Expliquer
-   ce qu'il vérifie.
-3. Valgrind propre et TSan propre, en direct.
-4. **Chaque membre explique une partie écrite par l'autre** : par exemple
-   le déplacement de `Fichier` ou l'astuce de l'octet `etat`.
-5. Les extensions réalisées, s'il y en a (avec E3 : démo au shell, coupure
-   en plein `write` avec `--coupure N`, redémarrage, données intactes).
+- **tout est fusionné** : le travail des branches `dev/<prénom>` est arrivé
+  sur `main` par Merge Request. Ce qui n'est que sur une branche `dev/*`
+  n'est pas évalué ;
+- le **dernier commit de `main` porte le tag `v1.0`**, poussé sur GitLab
+  (`git push origin v1.0`) ;
+- **aucun fichier parasite** : pas de dossier `build*/`, d'image `*.img`, de
+  fichiers d'éditeur (`.vscode/`, `.idea/`), d'exécutable ni de fichier
+  temporaire. Le `.gitignore` du squelette les exclut déjà : ne le
+  contournez pas ;
+- **pas de code mort** : pas de gros blocs commentés, d'affichages de
+  débogage oubliés ni de fichiers de brouillon ;
+- un **`README.md` à jour** : compilation, architecture, choix, limites
+  connues, **état du socle** et extensions réalisées.
 
-**Variante vidéo** : comme au Projet C, le binôme peut livrer à la place une
-vidéo de type screencast de moins de 10 minutes couvrant le même contenu.
-Le lien doit être fonctionnel et placé dans le `README.md`, être fourni
-avant le début du module suivant, et le choix doit être annoncé au
-formateur sur le canal habituel. La vidéo laisse le temps de **soigner la
-présentation**, mais elle montre le code du tag `v1.0` : le code n'évolue
-plus après la fin du module (seul le `README.md` peut recevoir le lien).
+**Ce que le formateur lance**, sur un clone neuf de `main`, sous Debian :
 
-Finalisez le `README.md` (usage, architecture, choix, limites connues,
-**état du socle et extensions réalisées**) avant le **tag `v1.0`**.
+1. build depuis zéro (`cmake` + `cmake --build`), zéro warning ;
+2. `ctest` ;
+3. `./build/test_coupures`, qui doit afficher le nombre de positions de
+   coupure essayées, toutes cohérentes ;
+4. Valgrind sur les tests, puis les tests sous ASan et TSan ;
+5. les extensions décrites dans le `README.md`, s'il y en a.
+
+Faites ce parcours vous-mêmes avant de poser le tag, dans un dossier vide :
+
+```bash
+git clone https://gitlab.com/<groupe>/flashfs.git verif && cd verif
+cmake -S . -B build && cmake --build build -j && ctest --test-dir build
+./build/test_coupures
+```
+
+Si une partie du socle n'est pas terminée, dites-le **honnêtement** dans le
+`README.md` : ce qui marche, ce qui manque, et comment vous l'auriez
+terminé. Ce qui manque est compté comme manquant, mais un `README.md`
+lucide est apprécié, alors qu'un problème caché ne l'est pas.
 
 ---
 
@@ -936,7 +949,7 @@ Finalisez le `README.md` (usage, architecture, choix, limites connues,
 - [ ] `Fichier` non copiable (vérifié par `static_assert`), déplaçable, validé en fin de portée
 - [ ] Le code respecte `FORMAT.md` (fourni)
 - [ ] `README.md` : usage, architecture, limites, **extensions réalisées**
-- [ ] Démonstration réalisée sur le tag `v1.0` (live, ou vidéo avec lien fonctionnel)
+- [ ] Branche `main` propre (tout fusionné, aucun fichier parasite), tag `v1.0` sur son dernier commit
 
 **Extensions (cochez celles réalisées) :**
 
@@ -1002,7 +1015,7 @@ Finalisez le `README.md` (usage, architecture, choix, limites connues,
 > forme est libre ; **l'information affichée et les codes retour sont
 > imposés**.
 
-## A.0 — Démonstration du socle (par les tests)
+## A.0 — Vérification du socle (par les tests)
 
 ```
 $ ctest --test-dir build
