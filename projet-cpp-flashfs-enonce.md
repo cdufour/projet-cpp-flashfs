@@ -708,9 +708,13 @@ ce tag qui est évalué** : rien d'autre n'est à livrer ensuite (étape 6).
 
 ## Étape 5 — Extensions [EXTENSION]
 
-À n'aborder **qu'une fois le socle terminé et tagué**. Elles sont
-indépendantes les unes des autres. Chaque extension réalisée est testée et
-documentée (dans le `README.md`) comme le reste du projet.
+À n'aborder **qu'une fois le socle terminé et fusionné sur `main`** (étape 4).
+Elles sont indépendantes les unes des autres. Chaque extension réalisée est
+testée, documentée (dans le `README.md`) comme le reste du projet, puis
+fusionnée sur `main` par Merge Request. Une extension inachevée, ou qui casse
+un test, n'est pas fusionnée : elle reste sur votre branche `dev/*` (non
+évaluée), et le `README.md` peut la mentionner. Le tag `v1.0` se pose en
+dernier, extensions comprises.
 
 ### E1 — `fsck` : vérifier la cohérence
 
